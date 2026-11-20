@@ -39,6 +39,27 @@ The mitigation is a diagnostic comparison, not a replacement for installing a fi
 
 The reported issue is in an optimized OpenJDK Base64 decode path on qualifying x86-64 systems. A carefully selected malformed input may expose a memory-safety failure in affected JVM builds. Reproduction depends on the exact vendor build, CPU feature set, and effective JVM options. This lab deliberately stops at a local, bounded memory-integrity observation; it does not establish exploitability in any application.
 
+The probe uses a malformed 65-byte Base64 input and a prefilled destination buffer. It checks bytes after the output length expected for the input. If those sentinel bytes change, the process exits with status `1`; an unchanged destination exits `0`. A decoder exception is recorded as a rejected input and does not by itself prove that memory was or was not corrupted. JVM startup or other unexpected errors exit `2`.
+
+To run the same bounded observation with the documented intrinsic workaround:
+
+```sh
+docker compose -f lab/compose.yaml run --rm --no-deps java4shell-mitigated
+```
+
+Compare the runtime details and output, but do not treat one clean run as a fleet-wide finding. The check is intentionally not a remote scanner and does not inspect application versions, container images, or vendor backports.
+
+## Troubleshooting
+
+- **No change observed:** This is inconclusive. Check the CPU feature set, exact JVM vendor/build, and whether the intrinsic is active. A backported fix or unsupported CPU can prevent reproduction.
+- **Container engine unavailable:** Install Docker from its official source and enable Compose v2, or build/run the Java probe in a disposable compatible environment. Keep the vulnerable JVM offline and isolated.
+- **Image tag unavailable:** Do not silently substitute a newer or unknown tag. Confirm an affected vendor build from the references, then update the pinned tag and record its digest before interpreting results.
+- **Permission or resource error:** Check that Docker supports the Compose security/resource options in `lab/compose.yaml`. Do not remove the isolation settings to force a run.
+
+## Mitigation
+
+Upgrade to a fixed release provided by the Java vendor in use, rebuild images, and restart affected JVM processes. AWS lists fixed Corretto builds in its bulletin; other distributions may publish different package versions or backports. If patching must wait, consult the vendor's current guidance on `-XX:-UseBASE64Intrinsics`. Treat the flag as temporary and verify it is actually effective for the application process.
+
 ## References
 
 - [CVE-2026-114938 record](https://www.cve.org/CVERecord?id=CVE-2026-114938)

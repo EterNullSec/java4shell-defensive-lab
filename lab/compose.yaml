@@ -1,0 +1,25 @@
+services:
+  java4shell-lab:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: eternull/java4shell-lab:local
+    network_mode: none
+    read_only: true
+    user: "10001:10001"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    cpus: 1.0
+    pids_limit: 32
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    entrypoint: ["java", "-cp", "/app", "LabProbe"]
+
+  java4shell-mitigated:
+    extends:
+      service: java4shell-lab
+    environment:
+      JAVA_TOOL_OPTIONS: -XX:-UseBASE64Intrinsics
